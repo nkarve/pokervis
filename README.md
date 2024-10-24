@@ -9,7 +9,7 @@
 
 
 ### Getting Started:
-```
+```rust
 use pokervis::holdem;
 
 fn main() {
