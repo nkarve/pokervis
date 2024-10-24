@@ -17,7 +17,7 @@ use renet::{RenetServer, ConnectionConfig, ServerEvent, DefaultChannel};
 // this will handle server etc. so decoupled from game logic
 pub struct HoldemGame {
     players: Vec<Player>,
-    // roundhistory
+    // RoundHistory
 }
 
 impl HoldemGame {
@@ -28,52 +28,6 @@ impl HoldemGame {
     }
 
     pub fn play_rounds(&mut self, n: u32, wait_for_user: bool) {       
-        /* let mut server = RenetServer::new(ConnectionConfig::default());
-        let server_addr: SocketAddr = "127.0.0.1:6030".parse().unwrap();
-
-        let socket: UdpSocket = UdpSocket::bind(server_addr).unwrap();
-        let server_config = ServerConfig {
-            current_time: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap(),
-            max_clients: 64,
-            protocol_id: 0,
-            public_addresses: vec![server_addr],
-            authentication: ServerAuthentication::Unsecure
-        };
-        let mut transport = NetcodeServerTransport::new(server_config, socket).unwrap();
-        
-        println!("Server started on {}", server_addr);
-
-        let mut last_updated = Instant::now();
-        loop {
-            let now = Instant::now();
-            server.update(now - last_updated);
-            transport.update(now - last_updated, &mut server).unwrap();
-            last_updated = now;
-
-            while let Some(event) = server.get_event() {
-                match event {
-                    ServerEvent::ClientConnected { client_id } => {
-                        println!("Client {client_id} connected");
-                    }
-                    ServerEvent::ClientDisconnected { client_id, reason } => {
-                        println!("Client {client_id} disconnected: {reason}");
-                    }
-                }
-            }
-
-            for client_id in server.clients_id() {
-                while let Some(message) = server.receive_message(client_id, DefaultChannel::ReliableOrdered) {
-                    println!("Received message from client {}: {:?}", client_id, message);
-                    server.broadcast_message(DefaultChannel::ReliableOrdered, message);
-                }
-            }
-
-            transport.send_packets(&mut server);
-
-            std::thread::sleep(Duration::from_millis(50));
-        } */
-
-
         for _ in 0..n {
             let mut round = HoldemRound::new(self.players.clone(), 1, 2);
             round.play();
@@ -99,14 +53,12 @@ pub struct RoundData {
     button: usize,
     active_count: usize,
     actions: Vec<(String, BetAction)>,
-    // last_action: BetAction,
 }
 
 struct HoldemRound {
     players: Vec<Player>,
     deck: Vec<Card>,
     data: RoundData,
-    // betting_actions: Vec<BetAction>,
 }
 
 impl HoldemRound {
@@ -120,7 +72,6 @@ impl HoldemRound {
             let card2 = deck.pop().unwrap();
             player.hole_cards = vec![card1, card2];
 
-            // TODO: remove
             player.ai = Some(AI::new(player.name.clone(), player.hole_cards.clone()));
         }
 
@@ -140,7 +91,6 @@ impl HoldemRound {
                 active_count: n,
                 actions: Vec::new(),
             }
-            // betting_actions: Vec::new(),
         }
     }
 
@@ -240,29 +190,7 @@ impl HoldemRound {
         }
         println!("\n");
 
-        // TODO: rewrite this as imperative
         // TODO: side pot
-        /* let mut winning_score = 9999;
-        for p in &self.players {
-            if p.last_action == Some(BetAction::Fold) || !shows.next().unwrap() { continue; }
-            let (score, _) = eval7([self.data.board.as_slice(), &p.hole_cards].concat());
-            winning_score = winning_score.min(score);
-        }
-
-        let mut winning_idx = Vec::new();
-        for (i, p) in self.players.iter().enumerate() {
-            if p.last_action == Some(BetAction::Fold) || !shows.next().unwrap() { continue; }
-            let (score, _) = eval7([self.data.board.as_slice(), &p.hole_cards].concat());
-            if score == winning_score {
-                winning_idx.push(i);
-            }
-        }
-
-        for i in &winning_idx {
-            let amt = self.data.pot as i32 / winning_idx.len() as i32;
-            self.players[*i].stack += amt;
-            println!("Player {} wins ${}", self.players[*i].name, amt);
-        } */
     }
     
     fn apply_action(&mut self, player_idx: usize, action: BetAction) {
@@ -309,7 +237,6 @@ impl HoldemRound {
         self.reset();
     }
 
-    // TODO: augment this if merging HoldemGame and HoldemRound
     fn reset(&mut self) {
         for player in &mut self.players {
             player.hole_cards.clear();
@@ -354,7 +281,6 @@ trait PlayerTrait {
     fn get_showdown_action(&self, data: &RoundData) -> bool;
 }
 
-// TODO: allow 3+ players
 #[derive(Debug, Clone)]
 pub struct AI {
     name: String,
@@ -363,7 +289,7 @@ pub struct AI {
     last_action: Option<BetAction>,
     rng: RefCell<ThreadRng>, // TODO: change to fast rng
     his_range: Vec<f32>,
-    his_wins: RefCell<Vec<f32>>, // TODO: store wins only for previous round
+    his_wins: RefCell<Vec<f32>>,
     comm_range: Vec<f32>,
     mask: Vec<bool>,
 }
@@ -466,7 +392,6 @@ impl AI {
     }
 
     fn size_bet(&self, pot_odds: f32, equity: f32, data: &RoundData) -> u32 {
-        // TODO: implement value bets, bluffs
         let val_equity = if equity > 0.75 { equity / 1.5 } else { equity };
 
         let max_bet = (data.pot as f32 / (1. / val_equity - 1.)) as u32;
@@ -585,8 +510,8 @@ impl Player {
         }
     }
 }
+
 impl PlayerTrait for Player {
-    //TODO: change this obviously
     fn get_bet_action(&self, data: &RoundData) -> BetAction {
         if self.name == "ALC" {
             return self.get_action_human(data);
